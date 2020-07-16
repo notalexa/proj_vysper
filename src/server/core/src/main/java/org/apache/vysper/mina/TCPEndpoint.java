@@ -14,8 +14,6 @@ import org.apache.vysper.mina.codec.XMPPProtocolCodecFactory;
 import org.apache.vysper.xmpp.server.ServerRuntimeContext;
 import org.apache.vysper.xmpp.server.ServerRuntimeContextProvider;
 
-import not.alexa.vysper.adapter.XmppIoHandlerAdapter;
-
 /**
  *
  * @author The Apache MINA Project (dev@mina.apache.org)
@@ -72,6 +70,6 @@ public class TCPEndpoint implements MultiHostEndpoint {
 
 	@Override
 	public void start(ServerRuntimeContextProvider contextProvider) throws IOException {
-		start(new XmppIoHandlerAdapter(contextProvider));
+		start(new XmppIoHandlerAdapter(this,contextProvider));
 	}
 }

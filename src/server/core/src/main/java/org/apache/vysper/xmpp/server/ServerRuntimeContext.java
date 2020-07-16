@@ -24,12 +24,19 @@ import java.util.List;
 
 import javax.net.ssl.SSLContext;
 
+import org.apache.mina.core.session.IoSession;
+import org.apache.vysper.mina.MinaBackedSessionContext;
 import org.apache.vysper.storage.StorageProvider;
 import org.apache.vysper.xmpp.addressing.Entity;
+import org.apache.vysper.xmpp.addressing.EntityImpl;
 import org.apache.vysper.xmpp.authorization.UserAuthorization;
 import org.apache.vysper.xmpp.delivery.StanzaRelay;
+import org.apache.vysper.xmpp.delivery.failure.DeliveryException;
+import org.apache.vysper.xmpp.delivery.failure.DeliveryFailureStrategy;
+import org.apache.vysper.xmpp.delivery.failure.IgnoreFailureStrategy;
 import org.apache.vysper.xmpp.modules.Module;
 import org.apache.vysper.xmpp.modules.ServerRuntimeContextService;
+import org.apache.vysper.xmpp.protocol.SessionStateHolder;
 import org.apache.vysper.xmpp.protocol.StanzaHandler;
 import org.apache.vysper.xmpp.protocol.StanzaProcessor;
 import org.apache.vysper.xmpp.server.components.Component;
@@ -109,8 +116,60 @@ public interface ServerRuntimeContext {
     	return true;
     }
 
-	default Entity getFrom(SessionContext sessionContext, Stanza stanza) {
+	default Entity getFrom(SessionContext sessionContext, Stanza stanza,boolean includeResource) {
 		Entity from=stanza.getFrom();
-		return from==null?sessionContext.getInitiatingEntity():from;
+		if(from==null) {
+			from=sessionContext.getInitiatingEntity();
+		}
+		if(includeResource&&from!=null&&from.getResource()==null) {
+			List<String> bound=getResourceRegistry().getResourcesForSession(sessionContext);
+			if(bound.size()==1) {
+				from=new EntityImpl(from,bound.get(0));
+			}
+		}
+		return from;
+	}
+	
+	/**
+	 * Relay handling using an failure ignore strategy.
+	 * 
+	 * @param stanza the stanza to relay
+	 * @return <code>true<code>if relaying was successful (with respect to the failure strategy)
+	 */
+	default boolean relay(Stanza stanza) {
+		return relay(stanza,IgnoreFailureStrategy.IGNORE_FAILURE_STRATEGY);
+	}
+	
+	/**
+	 * 
+	 * @param stanza the stanza to relay
+	 * @param failureStrategy the failure strategy
+	 * @return <code>true<code>if relaying was successful (with respect to the failure strategy)
+	 */
+	default boolean relay(Stanza stanza,DeliveryFailureStrategy failureStrategy) {
+		try {
+			resolveDomainContext(stanza.getTo()).getStanzaRelay().relay(stanza.getTo(),stanza,failureStrategy);
+			return true;
+		} catch(DeliveryException e) {
+			return false;
+		}
+	}
+	
+	public class ComponentContext extends ServerRuntimeContextAdapter {
+		protected Entity componentEntity;
+		public ComponentContext(Entity componentJID,ServerRuntimeContext serverContext) {
+			super(serverContext);
+			this.componentEntity=componentJID;
+		}
+		@Override
+		public Entity getServerEnitity() {
+			return componentEntity;
+		}
+	}
+
+	default SessionContext createSession(SessionStateHolder stateHolder, IoSession ioSession, Entity entity) {
+		MinaBackedSessionContext context=new MinaBackedSessionContext(this, stateHolder, ioSession);
+		context.setInitiatingEntity(entity);
+		return context;
 	}
 }

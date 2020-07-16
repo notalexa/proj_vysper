@@ -8,6 +8,7 @@ import org.apache.vysper.storage.StorageProvider;
 import org.apache.vysper.xmpp.addressing.Entity;
 import org.apache.vysper.xmpp.authorization.UserAuthorization;
 import org.apache.vysper.xmpp.delivery.StanzaRelay;
+import org.apache.vysper.xmpp.delivery.failure.DeliveryFailureStrategy;
 import org.apache.vysper.xmpp.modules.Module;
 import org.apache.vysper.xmpp.modules.ServerRuntimeContextService;
 import org.apache.vysper.xmpp.protocol.StanzaHandler;
@@ -129,11 +130,18 @@ public class ServerRuntimeContextAdapter implements ServerRuntimeContext {
 		return delegate.resolveDomainContext(entity);
 	}
 
-	public Entity getFrom(SessionContext sessionContext, Stanza stanza) {
-		return delegate.getFrom(sessionContext, stanza);
+	@Override
+	public Entity getFrom(SessionContext sessionContext, Stanza stanza,boolean includeResource) {
+		return delegate.getFrom(sessionContext, stanza,includeResource);
 	}
 
+	@Override
 	public ServerRuntimeContext getDomainContext() {
 		return delegate.getDomainContext();
+	}
+
+	@Override
+	public boolean relay(Stanza stanza, DeliveryFailureStrategy failureStrategy) {
+		return delegate.relay(stanza, failureStrategy);
 	}
 }

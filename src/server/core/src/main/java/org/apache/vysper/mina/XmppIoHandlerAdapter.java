@@ -26,6 +26,7 @@ import org.apache.mina.core.write.WriteToClosedSessionException;
 import org.apache.mina.filter.ssl.SslFilter;
 import org.apache.vysper.mina.codec.StanzaWriteInfo;
 import org.apache.vysper.xml.fragment.XMLText;
+import org.apache.vysper.xmpp.addressing.Entity;
 import org.apache.vysper.xmpp.addressing.EntityImpl;
 import org.apache.vysper.xmpp.protocol.SessionStateHolder;
 import org.apache.vysper.xmpp.protocol.StreamErrorCondition;
@@ -52,9 +53,11 @@ public class XmppIoHandlerAdapter implements IoHandler {
     final Logger logger = LoggerFactory.getLogger(XmppIoHandlerAdapter.class);
 
     protected ServerRuntimeContextProvider contextProvider;
+    protected MultiHostEndpoint endpoint;
     
-	public XmppIoHandlerAdapter(ServerRuntimeContextProvider contextProvider) {
+	public XmppIoHandlerAdapter(MultiHostEndpoint endpoint,ServerRuntimeContextProvider contextProvider) {
 		this.contextProvider=contextProvider;
+		this.endpoint=endpoint;
 	}
 
 	/**
@@ -69,7 +72,7 @@ public class XmppIoHandlerAdapter implements IoHandler {
             }
             SessionContext sessionContext=null;
             if(message instanceof Stanza) {
-            	sessionContext=createContext(stateHolder, ioSession, ((Stanza)message).getTo().getDomain());
+            	sessionContext=createContext(stateHolder, ioSession, ((Stanza)message).getTo());
             }
             if(sessionContext!=null) {
             	ioSession.setAttribute(ATTRIBUTE_VYSPER_SESSION, sessionContext);
@@ -108,10 +111,10 @@ public class XmppIoHandlerAdapter implements IoHandler {
      * @param domain the domain we request a session context for
      * @return the session context for the domain
      */
-    protected SessionContext createContext(SessionStateHolder stateHolder,IoSession ioSession,String domain) {
-    	ServerRuntimeContext serverRuntimeContext=contextProvider.resolveHostContext(new EntityImpl(null,domain,null));
-    	if(serverRuntimeContext.isXmppDomain()) {
-            return new MinaBackedSessionContext(serverRuntimeContext, stateHolder, ioSession);
+    protected SessionContext createContext(SessionStateHolder stateHolder,IoSession ioSession,Entity entity) {
+    	ServerRuntimeContext serverRuntimeContext=contextProvider.resolveDomainContext(new EntityImpl(null,entity.getDomain(),null));
+    	if(endpoint.isContextAllowed(serverRuntimeContext)) {
+            return serverRuntimeContext.createSession(stateHolder, ioSession,entity);
     	}
     	return null;
     }

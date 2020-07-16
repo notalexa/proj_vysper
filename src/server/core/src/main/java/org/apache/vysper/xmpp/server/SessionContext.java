@@ -22,7 +22,12 @@ package org.apache.vysper.xmpp.server;
 
 import org.apache.vysper.xmpp.addressing.Entity;
 import org.apache.vysper.xmpp.protocol.NamespaceURIs;
+import org.apache.vysper.xmpp.server.response.ServerErrorResponses;
 import org.apache.vysper.xmpp.stanza.Stanza;
+import org.apache.vysper.xmpp.stanza.StanzaBuilder;
+import org.apache.vysper.xmpp.stanza.StanzaErrorCondition;
+import org.apache.vysper.xmpp.stanza.StanzaErrorType;
+import org.apache.vysper.xmpp.stanza.XMPPCoreStanza;
 import org.apache.vysper.xmpp.state.resourcebinding.BindException;
 import org.apache.vysper.xmpp.writer.StanzaWriter;
 
@@ -202,6 +207,32 @@ public interface SessionContext {
     }
     
     default Entity getFrom(Stanza stanza) {
-    	return getServerRuntimeContext().getFrom(this,stanza);
+    	return getFrom(stanza,true);
+    }
+    
+    default Entity getFrom(Stanza stanza,boolean includeResource) {
+    	return getServerRuntimeContext().getFrom(this,stanza,includeResource);
+    }
+    
+    default boolean relay(Stanza stanza) {
+    	Entity from=stanza.getFrom();
+    	getFrom(stanza);
+		if(from==null) {
+			from=getFrom(stanza);
+			if(from==null) {
+				return false;
+			}
+			if(from.getResource()==null) {
+				Stanza errorStanza=ServerErrorResponses.getStanzaError(StanzaErrorCondition.UNDEFINED_CONDITION, XMPPCoreStanza.getWrapper(stanza),
+		           	StanzaErrorType.CANCEL,
+		               "session has no uniquely identified",
+		               getXMLLang(), null);
+				getResponseWriter().write(errorStanza);
+					// Error but nevertheless handled
+				return true;
+			}
+			stanza=StanzaBuilder.createForwardStanza(stanza,from,null);
+		}
+		return resolveDomainContext(stanza).relay(stanza);
     }
 }
