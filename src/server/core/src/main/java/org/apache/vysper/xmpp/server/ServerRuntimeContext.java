@@ -33,7 +33,6 @@ import org.apache.vysper.xmpp.authorization.UserAuthorization;
 import org.apache.vysper.xmpp.delivery.StanzaRelay;
 import org.apache.vysper.xmpp.delivery.failure.DeliveryException;
 import org.apache.vysper.xmpp.delivery.failure.DeliveryFailureStrategy;
-import org.apache.vysper.xmpp.delivery.failure.IgnoreFailureStrategy;
 import org.apache.vysper.xmpp.modules.Module;
 import org.apache.vysper.xmpp.modules.ServerRuntimeContextService;
 import org.apache.vysper.xmpp.protocol.SessionStateHolder;
@@ -137,7 +136,7 @@ public interface ServerRuntimeContext {
 	 * @return <code>true<code>if relaying was successful (with respect to the failure strategy)
 	 */
 	default boolean relay(Stanza stanza) {
-		return relay(stanza,IgnoreFailureStrategy.IGNORE_FAILURE_STRATEGY);
+		return relay(stanza,DeliveryFailureStrategy.IGNORE);
 	}
 	
 	/**

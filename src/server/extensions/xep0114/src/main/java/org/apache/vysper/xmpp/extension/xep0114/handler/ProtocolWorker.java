@@ -31,7 +31,7 @@ import org.apache.vysper.xmpp.protocol.SessionStateHolder;
 import org.apache.vysper.xmpp.protocol.StanzaHandler;
 import org.apache.vysper.xmpp.protocol.StanzaProcessor;
 import org.apache.vysper.xmpp.protocol.StateAwareProtocolWorker;
-import org.apache.vysper.xmpp.protocol.ProtocolWorker.HandlerProxy;
+import org.apache.vysper.xmpp.protocol.EvalHandler;
 import org.apache.vysper.xmpp.protocol.worker.AuthenticatedProtocolWorker;
 import org.apache.vysper.xmpp.server.ServerRuntimeContext;
 import org.apache.vysper.xmpp.server.SessionContext;
@@ -90,7 +90,7 @@ public class ProtocolWorker implements StanzaProcessor {
             throw new IllegalStateException("handler requires session context");
         }
         if(targetContext!=sessionContext.getServerRuntimeContext()) {
-        	stanzaHandler=new HandlerProxy(targetContext,stanzaHandler);
+        	stanzaHandler=new EvalHandler(targetContext,stanzaHandler);
         }
 
         StateAwareProtocolWorker stateAwareProtocolWorker = stateWorker.get(sessionContext.getState());
