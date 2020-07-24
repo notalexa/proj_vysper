@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src/main/java"/>
+	<classpathentry kind="src" path="src/server/core/src/main/java"/>
+	<classpathentry kind="src" path="src/server/extensions/xep0114/src/main/java"/>
+	<classpathentry kind="src" output="bin/xep0124-xep0206-bosh-0.7" path="src/server/extensions/xep0124-xep0206-bosh/src/main/java"/>
+	<classpathentry kind="src" output="bin/xep0045-muc-0.7" path="src/server/extensions/xep0045-muc/src/main/java"/>
+	<classpathentry kind="src" output="bin/xep0060-pubsub-0.7" path="src/server/extensions/xep0060-pubsub/src/main/java"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/aopalliance-1.0.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/commons-codec-1.4.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/commons-collections-3.1.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/commons-io-1.4.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/commons-lang-2.5.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/commons-logging-1.1.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/concurrent-1.3.4.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/derby-10.2.1.6.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/dnsjava-2.0.8.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/ehcache-core-2.2.0.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/fontbox-0.1.0.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/jackrabbit-api-1.5.0.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/jackrabbit-core-1.5.3.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/jackrabbit-jcr-commons-1.5.3.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/jackrabbit-spi-1.5.0.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/jackrabbit-spi-commons-1.5.0.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/jackrabbit-text-extractors-1.5.0.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/jcl-over-slf4j-1.5.3.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/jcr-1.0.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/jempbox-0.2.0.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/jetty-continuation-7.2.1.v20101111.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/jetty-http-7.2.1.v20101111.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/jetty-io-7.2.1.v20101111.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/jetty-security-7.2.1.v20101111.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/jetty-server-7.2.1.v20101111.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/jetty-servlet-7.2.1.v20101111.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/jetty-util-7.2.1.v20101111.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/jetty-websocket-7.2.1.v20101111.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/log4j-1.2.14.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/lucene-core-2.3.2.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/mina-core-2.0.2.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/nbxml-0.7.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/nekohtml-1.9.7.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/pdfbox-0.7.3.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/poi-3.0.2-FINAL.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/poi-scratchpad-3.0.2-FINAL.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/servlet-api-2.5.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/slf4j-api-1.5.3.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/slf4j-log4j12-1.5.3.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/spec-compliance-0.7.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/spring-aop-3.0.5.RELEASE.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/spring-asm-3.0.5.RELEASE.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/spring-beans-3.0.5.RELEASE.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/spring-context-3.0.5.RELEASE.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/spring-core-3.0.5.RELEASE.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/spring-expression-3.0.5.RELEASE.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/vysper-core-0.7.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/vysper-websockets-0.7.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/xep0045-muc-0.7.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/xep0060-pubsub-0.7.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/xep0124-xep0206-bosh-0.7.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/xercesImpl-2.8.1.jar"/>
+	<classpathentry kind="lib" path="vysper-0.7/lib/xml-apis-1.3.03.jar"/>
+	<classpathentry kind="lib" path="config"/>
+	<classpathentry kind="output" path="bin/vysper-core-0.7"/>
+</classpath>
