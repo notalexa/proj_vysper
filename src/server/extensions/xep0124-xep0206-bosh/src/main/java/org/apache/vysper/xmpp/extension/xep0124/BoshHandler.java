@@ -174,7 +174,6 @@ public class BoshHandler {
             stanza = new Stanza(element.getNamespaceURI(), element.getName(), element.getNamespacePrefix(),
                     element.getAttributes(), element.getInnerFragments());
         }
-        System.out.println("BOSHHandler: Process stanza "+stanza.getName()+"["+stanza.getAttributeValue("id")+"]");
         session.getServerRuntimeContext().getStanzaProcessor().processStanza(session.getServerRuntimeContext(), session, stanza,
                 session.getStateHolder());
     }

@@ -157,7 +157,6 @@ public class DefaultServerRuntimeContext implements ServerRuntimeContext, Module
 
     public StanzaHandler getHandler(Stanza stanza) {
         StanzaHandler handler= stanzaHandlerLookup.getHandler(stanza);
-        System.out.println(getServerEnitity()+" Stanza "+stanza+" has handler "+handler);
         return handler;
     }
 

@@ -66,13 +66,21 @@ public class BoshEndpoint implements MultiHostEndpoint {
     public void setServerRuntimeContext(ServerRuntimeContext serverRuntimeContext) {
         this.serverRuntimeContext = serverRuntimeContext;
     }
+    
+    public BoshEndpoint() {
+    }
+
+    public BoshEndpoint(int port) {
+    	setPort(port);
+    }
 
     /**
      * Setter for the listen port
      * @param port
      */
-    public void setPort(int port) {
+    public BoshEndpoint setPort(int port) {
         this.port = port;
+        return this;
     }
 
     /**
@@ -83,8 +91,9 @@ public class BoshEndpoint implements MultiHostEndpoint {
      * @see #setSSLCertificateKeystorePassword 
      * @param keystorePath the path to the Java keystore
      */
-    public void setSSLCertificateKeystore(String keystorePath) {
+    public BoshEndpoint setSSLCertificateKeystore(String keystorePath) {
         sslKeystorePath = keystorePath;
+        return this;
     }
 
     /**
@@ -99,8 +108,9 @@ public class BoshEndpoint implements MultiHostEndpoint {
      * @param password the password used as the keystore password and also used
      * when recovering the key from the keystore
      */
-    public void setSSLCertificateKeystorePassword(String password) {
+    public BoshEndpoint setSSLCertificateKeystorePassword(String password) {
         sslKeystorePassword = password;
+        return this;
     }
 
     /**
@@ -110,8 +120,9 @@ public class BoshEndpoint implements MultiHostEndpoint {
      * configured with {@link #setSSLCertificateInfo(String, String)}
      * @param value
      */
-    public void setSSLEnabled(boolean value) {
+    public BoshEndpoint setSSLEnabled(boolean value) {
         isSSLEnabled = value;
+        return this;
     }
 
     /**
@@ -135,9 +146,10 @@ public class BoshEndpoint implements MultiHostEndpoint {
      * The default is as 'root context' under '/'. 
      * @param contextPath
      */
-    public void setContextPath(String contextPath) {
+    public BoshEndpoint setContextPath(String contextPath) {
         if (contextPath == null) contextPath = "/";
         this.contextPath = contextPath;
+        return this;
     }
 
     /**

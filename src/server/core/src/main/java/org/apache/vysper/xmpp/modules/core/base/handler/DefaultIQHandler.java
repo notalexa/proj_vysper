@@ -75,9 +75,7 @@ public abstract class DefaultIQHandler extends IQHandler {
             SessionContext sessionContext) {
     	if(stanza.getTo()!=null) {
     		serverRuntimeContext=serverRuntimeContext.resolveDomainContext(stanza.getTo());
-    		System.out.println(stanza.getTo()+" has resolved server context "+serverRuntimeContext.getServerEnitity());
     	}
-    	System.out.println("\nIQ["+stanza.getID()+":"+outboundStanza+":"+stanza.getType()+"] (from="+from(stanza,sessionContext)+", to="+stanza.getTo()+"), handling class="+getClass().getSimpleName()+"\n");
     	if(outboundStanza) {
 	        switch (stanza.getIQType()) {
 	        case ERROR:
@@ -108,7 +106,6 @@ public abstract class DefaultIQHandler extends IQHandler {
         		handler=relayedBack.remove(stanza.getID());
 			}
     		if(handler!=null) {
-    			System.out.println("IQ["+stanza.getID()+"] Relay handler found.");
     			ResponseStanzaContainer container=handler.execute(stanza, serverRuntimeContext, true, sessionContext, null);
     			if(container!=null) {
     				if(container.hasResponse()) {
@@ -117,18 +114,9 @@ public abstract class DefaultIQHandler extends IQHandler {
     			}
 				return null;
     		} else {
-    			System.out.println("IQ["+stanza.getID()+"] Relay handler not found.");
     			sessionContext.relay(stanza);
     			return null;
     		}
-//    		Stanza relayStanza=stanza;
-//    		if(stanza.getFrom()==null) {
-//       			relayStanza=StanzaBuilder.createForwardStanza(stanza,sessionContext.getInitiatingEntity(),null);
-//    		}
-////    		if("auth.meet.nikosia.de".equals(serverRuntimeContext.getServerEnitity().getDomain())&&"result".equals(stanza.getType())&&sessionContext.getInitiatingEntity().getDomain().startsWith("meet")) {
-////    			System.out.println("IQ["+stanza.getID()+"] RELAY RESULT TO "+relayStanza.getTo());
-////    		}
-//    		serverRuntimeContext.relay(stanza);
     	} catch(Throwable t) {
     		logger.error("Relaying iq result failed.",t);
     	}
