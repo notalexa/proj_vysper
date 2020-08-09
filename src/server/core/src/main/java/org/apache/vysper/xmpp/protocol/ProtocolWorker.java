@@ -115,81 +115,80 @@ public class ProtocolWorker implements StanzaProcessor {
                 responseWriter.handleNotAuthorized(sessionContext, stanza);
                 return;
             }
-        }
-
-        Entity from = stanza.getFrom();
-        if(sessionContext.isServerToServer()) {
-            XMPPCoreStanza coreStanza = XMPPCoreStanza.getWrapper(stanza);
-            
-            if(coreStanza != null) {
-                // stanza must come from the origin server
-                if(from == null) {
-                    Stanza errorStanza = ServerErrorResponses.getStanzaError(StanzaErrorCondition.UNKNOWN_SENDER,
-                            coreStanza, StanzaErrorType.MODIFY, "Missing from attribute", null, null);
-                    ResponseWriter.writeResponse(sessionContext, errorStanza);
-                    return;
-                } else if(!from.getDomain().equals(sessionContext.getInitiatingEntity().getDomain())) {
-                    // make sure the from attribute refers to the correct remote server
-                    
-                        Stanza errorStanza = ServerErrorResponses.getStanzaError(StanzaErrorCondition.UNKNOWN_SENDER,
-                                coreStanza, StanzaErrorType.MODIFY, "Incorrect from attribute", null, null);
-                        ResponseWriter.writeResponse(sessionContext, errorStanza); 
-                        return;
-                }
-                
-                Entity to = stanza.getTo();
-                if(to == null) {
-                    // TODO what's the appropriate error? StreamErrorCondition.IMPROPER_ADDRESSING?
-                    Stanza errorStanza = ServerErrorResponses.getStanzaError(StanzaErrorCondition.BAD_REQUEST,
-                            coreStanza, StanzaErrorType.MODIFY, "Missing to attribute", null, null);
-                    ResponseWriter.writeResponse(sessionContext, errorStanza);
-                    return;                    
-                } else if(!to.getDomain().equals(serverRuntimeContext.getServerEnitity().getDomain())) {
-                    // TODO what's the appropriate error? StreamErrorCondition.IMPROPER_ADDRESSING?
-                    Stanza errorStanza = ServerErrorResponses.getStanzaError(StanzaErrorCondition.BAD_REQUEST,
-                            coreStanza, StanzaErrorType.MODIFY, "Invalid to attribute", null, null);
-                    ResponseWriter.writeResponse(sessionContext, errorStanza);
-                    return;                    
-                    
-                }
-
-                // rewrite namespace
-                stanza = StanzaBuilder.rewriteNamespace(stanza, NamespaceURIs.JABBER_CLIENT);
-            }                
         } else {
-            // make sure that 'from' (if present) matches the bare authorized entity
-            // else respond with a stanza error 'unknown-sender'
-            // see rfc3920_draft-saintandre-rfc3920bis-04.txt#8.5.4
-            if (from != null && sessionContext.getInitiatingEntity() != null) {
-                Entity fromBare = from.getBareJID();
-                Entity initiatingEntity = sessionContext.getInitiatingEntity();
-                if (!initiatingEntity.equals(fromBare)) {
-                    responseWriter.handleWrongFromJID(sessionContext, stanza);
-                    return;
+            Entity from = stanza.getFrom();
+            if(sessionContext.isServerToServer()) {
+                XMPPCoreStanza coreStanza = XMPPCoreStanza.getWrapper(stanza);
+                
+                if(coreStanza != null) {
+                    // stanza must come from the origin server
+                    if(from == null) {
+                        Stanza errorStanza = ServerErrorResponses.getStanzaError(StanzaErrorCondition.UNKNOWN_SENDER,
+                                coreStanza, StanzaErrorType.MODIFY, "Missing from attribute", null, null);
+                        ResponseWriter.writeResponse(sessionContext, errorStanza);
+                        return;
+                    } else if(!from.getDomain().equals(sessionContext.getInitiatingEntity().getDomain())) {
+                        // make sure the from attribute refers to the correct remote server
+                        
+                            Stanza errorStanza = ServerErrorResponses.getStanzaError(StanzaErrorCondition.UNKNOWN_SENDER,
+                                    coreStanza, StanzaErrorType.MODIFY, "Incorrect from attribute", null, null);
+                            ResponseWriter.writeResponse(sessionContext, errorStanza); 
+                            return;
+                    }
+                    
+                    Entity to = stanza.getTo();
+                    if(to == null) {
+                        // TODO what's the appropriate error? StreamErrorCondition.IMPROPER_ADDRESSING?
+                        Stanza errorStanza = ServerErrorResponses.getStanzaError(StanzaErrorCondition.BAD_REQUEST,
+                                coreStanza, StanzaErrorType.MODIFY, "Missing to attribute", null, null);
+                        ResponseWriter.writeResponse(sessionContext, errorStanza);
+                        return;                    
+                    } else if(!to.getDomain().equals(serverRuntimeContext.getServerEnitity().getDomain())) {
+                        // TODO what's the appropriate error? StreamErrorCondition.IMPROPER_ADDRESSING?
+                        Stanza errorStanza = ServerErrorResponses.getStanzaError(StanzaErrorCondition.BAD_REQUEST,
+                                coreStanza, StanzaErrorType.MODIFY, "Invalid to attribute", null, null);
+                        ResponseWriter.writeResponse(sessionContext, errorStanza);
+                        return;                    
+                        
+                    }
+
+                    // rewrite namespace
+                    stanza = StanzaBuilder.rewriteNamespace(stanza, NamespaceURIs.JABBER_CLIENT);
+                }                
+            } else {
+                // make sure that 'from' (if present) matches the bare authorized entity
+                // else respond with a stanza error 'unknown-sender'
+                // see rfc3920_draft-saintandre-rfc3920bis-04.txt#8.5.4
+                if (from != null && sessionContext.getInitiatingEntity() != null) {
+                    Entity fromBare = from.getBareJID();
+                    Entity initiatingEntity = sessionContext.getInitiatingEntity();
+                    if (!initiatingEntity.equals(fromBare)) {
+                        responseWriter.handleWrongFromJID(sessionContext, stanza);
+                        return;
+                    }
                 }
-            }
-            // make sure that there is a bound resource entry for that from's resource id attribute!
-            if (from != null && from.getResource() != null) {
-                List<String> boundResources = sessionContext.getServerRuntimeContext().getResourceRegistry()
-                        .getBoundResources(from, false);
-                if (boundResources.size() == 0) {
-                    responseWriter.handleWrongFromJID(sessionContext, stanza);
-                    return;
+                // make sure that there is a bound resource entry for that from's resource id attribute!
+                if (from != null && from.getResource() != null) {
+                    List<String> boundResources = sessionContext.getServerRuntimeContext().getResourceRegistry()
+                            .getBoundResources(from, false);
+                    if (boundResources.size() == 0) {
+                        responseWriter.handleWrongFromJID(sessionContext, stanza);
+                        return;
+                    }
                 }
-            }
-            // make sure that there is a full from entity given in cases where more than one resource is bound
-            // in the same session.
-            // see rfc3920_draft-saintandre-rfc3920bis-04.txt#8.5.4
-            if (from != null && from.getResource() == null) {
-                List<String> boundResources = sessionContext.getServerRuntimeContext().getResourceRegistry()
-                        .getResourcesForSession(sessionContext);
-                if (boundResources.size() > 1) {
-                    responseWriter.handleWrongFromJID(sessionContext, stanza);
-                    return;
+                // make sure that there is a full from entity given in cases where more than one resource is bound
+                // in the same session.
+                // see rfc3920_draft-saintandre-rfc3920bis-04.txt#8.5.4
+                if (from != null && from.getResource() == null) {
+                    List<String> boundResources = sessionContext.getServerRuntimeContext().getResourceRegistry()
+                            .getResourcesForSession(sessionContext);
+                    if (boundResources.size() > 1) {
+                        responseWriter.handleWrongFromJID(sessionContext, stanza);
+                        return;
+                    }
                 }
             }
         }
-        
         try {
             stateAwareProtocolWorker.processStanza(sessionContext, sessionStateHolder, stanza, stanzaHandler);
         } catch (Exception e) {

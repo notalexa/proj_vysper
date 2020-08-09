@@ -29,8 +29,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.vysper.xml.fragment.XMLElement;
 import org.apache.vysper.xmpp.addressing.Entity;
 import org.apache.vysper.xmpp.addressing.EntityImpl;
+import org.apache.vysper.xmpp.modules.extension.xep0045_muc.MUCModule;
+import org.apache.vysper.xmpp.modules.extension.xep0045_muc.MUCStanzaBuilder;
+import org.apache.vysper.xmpp.modules.extension.xep0045_muc.stanzas.MucUserItem;
+import org.apache.vysper.xmpp.modules.extension.xep0045_muc.stanzas.Status;
+import org.apache.vysper.xmpp.modules.extension.xep0045_muc.stanzas.Status.StatusCode;
 import org.apache.vysper.xmpp.modules.servicediscovery.management.Feature;
 import org.apache.vysper.xmpp.modules.servicediscovery.management.Identity;
 import org.apache.vysper.xmpp.modules.servicediscovery.management.InfoDataForm;
@@ -41,6 +47,9 @@ import org.apache.vysper.xmpp.modules.servicediscovery.management.Item;
 import org.apache.vysper.xmpp.modules.servicediscovery.management.ItemRequestListener;
 import org.apache.vysper.xmpp.modules.servicediscovery.management.ServiceDiscoveryRequestException;
 import org.apache.vysper.xmpp.protocol.NamespaceURIs;
+import org.apache.vysper.xmpp.server.ServerRuntimeContext;
+import org.apache.vysper.xmpp.stanza.PresenceStanzaType;
+import org.apache.vysper.xmpp.stanza.Stanza;
 import org.apache.vysper.xmpp.stanza.dataforms.DataForm;
 import org.apache.vysper.xmpp.stanza.dataforms.Field;
 import org.apache.vysper.xmpp.stanza.dataforms.Field.Type;
@@ -51,6 +60,7 @@ import org.apache.vysper.xmpp.stanza.dataforms.Field.Type;
  * @author The Apache MINA Project (dev@mina.apache.org)
  */
 public class Room implements InfoRequestListener, ItemRequestListener {
+	private MUCModule module;
 
     private EnumSet<RoomType> roomTypes;
 
@@ -69,7 +79,7 @@ public class Room implements InfoRequestListener, ItemRequestListener {
     // keep in a map to allow for quick access
     private Map<Entity, Occupant> occupants = new ConcurrentHashMap<Entity, Occupant>();
 
-    public Room(Entity jid, String name, RoomType... types) {
+    public Room(MUCModule module,Entity jid, String name, RoomType... types) {
         if (jid == null) {
             throw new IllegalArgumentException("JID can not be null");
         } else if (jid.getResource() != null) {
@@ -78,7 +88,7 @@ public class Room implements InfoRequestListener, ItemRequestListener {
         if (name == null || name.trim().length() == 0) {
             throw new IllegalArgumentException("Name can not be null or empty");
         }
-
+        this.module=module;
         this.jid = jid;
         this.name = name;
 
@@ -141,6 +151,7 @@ public class Room implements InfoRequestListener, ItemRequestListener {
         } else {
             occupants.put(occupantJid, occupant);
         }
+        notifyOccupantAdded(occupant);
         return occupant;
     }
 
@@ -179,7 +190,10 @@ public class Room implements InfoRequestListener, ItemRequestListener {
     }
 
     public void removeOccupant(Entity occupantJid) {
-        occupants.remove(occupantJid);
+        Occupant occupant=occupants.remove(occupantJid);
+        if(occupant!=null) {
+        	notifyOccupantRemoved(occupant);
+        }
     }
 
     public int getOccupantCount() {
@@ -244,5 +258,47 @@ public class Room implements InfoRequestListener, ItemRequestListener {
     public Affiliations getAffiliations() {
         return affiliations;
     }
+    
+    protected void notifyOccupantAdded(Occupant occupant) {	
+    }
 
+    protected void notifyOccupantRemoved(Occupant occupant) {
+    }
+    
+    public void leave(Occupant leaving,String reason) {
+        for (Occupant occupant : getOccupants()) {
+            sendExitRoomPresenceToExisting(leaving, occupant, this, reason, module.getComponentContext());
+        }
+
+        if (isRoomType(RoomType.Temporary) && isEmpty()) {
+            module.getConference().deleteRoom(getJID());
+        }
+    }
+    
+    private void sendExitRoomPresenceToExisting(Occupant exitingOccupant, Occupant existingOccupant, Room room,
+            String statusMessage, ServerRuntimeContext serverRuntimeContext) {
+        Entity roomAndNewUserNick = new EntityImpl(room.getJID(), exitingOccupant.getNick());
+
+        List<XMLElement> inner = new ArrayList<XMLElement>();
+        inner.add(new MucUserItem(null, null, existingOccupant.getAffiliation(), Role.None));
+
+        // is this stanza to be sent to the exiting user himself?
+        boolean ownStanza = existingOccupant.getJid().equals(exitingOccupant.getJid());
+
+        if (ownStanza || statusMessage != null) {
+
+            Status status;
+            if (ownStanza) {
+                // send status to indicate that this is the users own presence
+                status = new Status(StatusCode.OWN_PRESENCE, statusMessage);
+            } else {
+                status = new Status(statusMessage);
+            }
+            inner.add(status);
+        }
+
+        Stanza presenceToExisting = MUCStanzaBuilder.createPresenceStanza(exitingOccupant,roomAndNewUserNick,
+                existingOccupant.getJid(), PresenceStanzaType.UNAVAILABLE, NamespaceURIs.XEP0045_MUC_USER, inner);
+        serverRuntimeContext.relay(presenceToExisting);
+    }
 }

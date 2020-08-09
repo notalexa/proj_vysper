@@ -95,6 +95,10 @@ public class MUCModule extends DefaultDiscoAwareModule implements Component, Com
         this.subdomain = subdomain;
         this.conference = conference;
     }
+    
+    public Conference getConference() {
+    	return conference;
+    }
 
     /**
      * Initializes the MUC module, configuring the storage providers.
@@ -126,13 +130,14 @@ public class MUCModule extends DefaultDiscoAwareModule implements Component, Com
         } else {
             conference.setRoomStorageProvider(roomStorageProvider);
         }
+        serverRuntimeContext.getResourceRegistry().addBindListener(roomStorageProvider);
 
         if (occupantStorageProvider == null) {
             logger.warn("No occupant storage provider found, using the default (in memory)");
         } else {
             conference.setOccupantStorageProvider(occupantStorageProvider);
         }
-        this.conference.initialize();
+        conference.initialize(this);
         serverRuntimeContext.registerComponent(this);
     }
 

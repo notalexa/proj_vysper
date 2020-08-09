@@ -19,6 +19,7 @@
  */
 package org.apache.vysper.xmpp.modules.extension.xep0045_muc.model;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -117,5 +118,12 @@ public class Occupant {
     		builder.addPreparedElement(inner);
     	}
     }
-
+    
+    public XMLElement getData(String tag) {
+    	return privateData.get(tag);
+    }
+    
+    public Collection<XMLElement> getData() {
+    	return privateData.values();
+    }
 }
