@@ -91,7 +91,7 @@ public class MUCMessageHandler extends DefaultMessageHandler {
             SessionContext sessionContext) {
 
         logger.debug("Received message for MUC");
-        Entity from = stanza.getFrom();
+        Entity from = sessionContext.getFrom(stanza);
         Entity roomWithNickJid = stanza.getTo();
         Entity roomJid = roomWithNickJid.getBareJID();
 
@@ -106,7 +106,7 @@ public class MUCMessageHandler extends DefaultMessageHandler {
             }
 
             logger.debug("Received groupchat message to {}", roomJid);
-            Room room = conference.findRoom(roomJid);
+            Room room = conference.findRoom(roomJid.getNode());
             if (room != null) {
                 Occupant sendingOccupant = room.findOccupantByJID(from);
 
@@ -159,7 +159,7 @@ public class MUCMessageHandler extends DefaultMessageHandler {
         } else if (type == null || type == MessageStanzaType.CHAT || type == MessageStanzaType.NORMAL) {
             // private message
             logger.debug("Received direct message to {}", roomWithNickJid);
-            Room room = conference.findRoom(roomJid);
+            Room room = conference.findRoom(roomJid.getNode());
             if (room != null) {
                 Occupant sendingOccupant = room.findOccupantByJID(from);
 

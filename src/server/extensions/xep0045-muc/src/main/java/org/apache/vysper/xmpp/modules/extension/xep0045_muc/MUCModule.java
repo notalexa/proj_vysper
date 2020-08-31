@@ -23,9 +23,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.vysper.storage.StorageProviderRegistry;
 import org.apache.vysper.xmpp.addressing.Entity;
 import org.apache.vysper.xmpp.addressing.EntityImpl;
 import org.apache.vysper.xmpp.addressing.EntityUtils;
+import org.apache.vysper.xmpp.delivery.StanzaRelay;
+import org.apache.vysper.xmpp.delivery.failure.DeliveryException;
+import org.apache.vysper.xmpp.delivery.failure.DeliveryFailureStrategy;
 import org.apache.vysper.xmpp.modules.DefaultDiscoAwareModule;
 import org.apache.vysper.xmpp.modules.core.base.handler.DefaultIQHandler;
 import org.apache.vysper.xmpp.modules.extension.xep0045_muc.handler.MUCIqAdminHandler;
@@ -37,8 +41,7 @@ import org.apache.vysper.xmpp.modules.extension.xep0045_muc.handler.MUCPresenceH
 import org.apache.vysper.xmpp.modules.extension.xep0045_muc.model.Conference;
 import org.apache.vysper.xmpp.modules.extension.xep0045_muc.model.Occupant;
 import org.apache.vysper.xmpp.modules.extension.xep0045_muc.model.Room;
-import org.apache.vysper.xmpp.modules.extension.xep0045_muc.storage.OccupantStorageProvider;
-import org.apache.vysper.xmpp.modules.extension.xep0045_muc.storage.RoomStorageProvider;
+import org.apache.vysper.xmpp.modules.extension.xep0045_muc.model.RoomType;
 import org.apache.vysper.xmpp.modules.servicediscovery.management.ComponentInfoRequestListener;
 import org.apache.vysper.xmpp.modules.servicediscovery.management.InfoElement;
 import org.apache.vysper.xmpp.modules.servicediscovery.management.InfoRequest;
@@ -55,6 +58,7 @@ import org.apache.vysper.xmpp.protocol.StanzaProcessor;
 import org.apache.vysper.xmpp.server.ServerRuntimeContext;
 import org.apache.vysper.xmpp.server.SessionContext;
 import org.apache.vysper.xmpp.server.components.Component;
+import org.apache.vysper.xmpp.server.components.ComponentStanzaHandlerLookup;
 import org.apache.vysper.xmpp.server.components.ComponentStanzaProcessor;
 import org.apache.vysper.xmpp.stanza.IQStanzaType;
 import org.apache.vysper.xmpp.stanza.Stanza;
@@ -67,10 +71,11 @@ import org.slf4j.LoggerFactory;
  *
  * @author The Apache MINA Project (dev@mina.apache.org)
  */
-public class MUCModule extends DefaultDiscoAwareModule implements Component, ComponentInfoRequestListener,
+public final class MUCModule extends DefaultDiscoAwareModule implements Component, ComponentInfoRequestListener,
         ItemRequestListener {
 
     private String subdomain = "chat";
+    private StorageProviderRegistry registry;
 
     private Conference conference;
 
@@ -83,21 +88,31 @@ public class MUCModule extends DefaultDiscoAwareModule implements Component, Com
 
     private ComponentStanzaProcessor stanzaProcessor;
 
-    public MUCModule(String subdomain) {
-        this(subdomain, new Conference("Conference"));
+    public MUCModule(StorageProviderRegistry registry,String subdomain) {
+        this(registry,subdomain, new Conference("Conference"));
     }
 
-    public MUCModule() {
-    	this("conference");
+    public MUCModule(StorageProviderRegistry registry) {
+    	this(registry,"conference");
     }
 
-    public MUCModule(String subdomain, Conference conference) {
+    public MUCModule(StorageProviderRegistry registry,String subdomain, Conference conference) {
         this.subdomain = subdomain;
         this.conference = conference;
+        this.registry=registry;
+        conference.initialize(this,registry);
     }
     
     public Conference getConference() {
     	return conference;
+    }
+    
+    public Entity getRoomJid(Room room) {
+    	return new EntityImpl(room.getNodeName(),fullDomain.getDomain(),null);
+    }
+    
+    public Room createRoom(String nodeName,String descr,RoomType...types) {
+    	return conference.createRoom(nodeName, descr, types);
     }
 
     /**
@@ -106,38 +121,73 @@ public class MUCModule extends DefaultDiscoAwareModule implements Component, Com
     @Override
     public void initialize(ServerRuntimeContext serverRuntimeContext) {
         super.initialize(serverRuntimeContext);
-        componentRuntimeContext=new ServerRuntimeContext.ComponentContext(new EntityImpl(null,subdomain+"."+serverRuntimeContext.getServerEnitity().getDomain(),null), serverRuntimeContext);
-
         this.serverRuntimeContext = serverRuntimeContext;
-
         fullDomain = EntityUtils.createComponentDomain(subdomain, serverRuntimeContext);
+        ComponentStanzaHandlerLookup lookup=new ComponentStanzaHandlerLookup();
+        componentRuntimeContext=new ServerRuntimeContext.ComponentContext(new EntityImpl(null,subdomain+"."+serverRuntimeContext.getServerEnitity().getDomain(),null), serverRuntimeContext) {
+			@Override
+			public StanzaHandler getHandler(Stanza stanza) {
+				StanzaHandler handler=lookup.getHandler(stanza);
+				if(handler!=null) {
+					return handler;
+				}
+				return super.getHandler(stanza);
+			}
+
+			@Override
+			public boolean relay(Stanza stanza) {
+				return relay(stanza,new DeliveryFailureStrategy() {
+					
+					@Override
+					public void process(StanzaRelay relay, Stanza failedToDeliverStanza, List<DeliveryException> deliveryException) throws DeliveryException {
+						try {
+							Room room=getConference().findRoom(failedToDeliverStanza.getFrom().getNode());
+							if(room!=null) {
+								Occupant occupant=room.findOccupantByNick(failedToDeliverStanza.getFrom().getResource());
+								if(occupant!=null) {
+									// Kick out
+									occupant.leaveAsync("unreachable");
+								}
+							}
+						} catch(Throwable t) {}
+					}
+				});
+			}
+        };
+        lookup.addDefaultHandler(new MUCPresenceHandler(this));
+        lookup.addDefaultHandler(new MUCMessageHandler(conference, fullDomain));
 
         ComponentStanzaProcessor processor = new ComponentStanzaProcessor(serverRuntimeContext);
-        processor.addHandler(new MUCPresenceHandler(conference));
+        processor.addHandler(new MUCPresenceHandler(this));
         processor.addHandler(new MUCMessageHandler(conference, fullDomain));
         processor.addHandler(new MUCIqAdminHandler(conference));
         processor.addHandler(new MUCIqOwnerHandler(conference));
         processor.addHandler(new MUCIqSetRelay());
         stanzaProcessor = processor;
 
-        RoomStorageProvider roomStorageProvider = (RoomStorageProvider) serverRuntimeContext
-                .getStorageProvider(RoomStorageProvider.class);
-        OccupantStorageProvider occupantStorageProvider = (OccupantStorageProvider) serverRuntimeContext
-                .getStorageProvider(OccupantStorageProvider.class);
+//        RoomStorageProvider roomStorageProvider = (RoomStorageProvider) serverRuntimeContext
+//                .getStorageProvider(RoomStorageProvider.class);
+//        OccupantStorageProvider occupantStorageProvider = (OccupantStorageProvider) serverRuntimeContext
+//                .getStorageProvider(OccupantStorageProvider.class);
+//
+//        if (roomStorageProvider == null) {
+//            logger.warn("No room storage provider found, using the default (in memory)");
+//        } else {
+//            conference.setRoomStorageProvider(roomStorageProvider);
+//        }
+//        if (occupantStorageProvider == null) {
+//            logger.warn("No occupant storage provider found, using the default (in memory)");
+//        } else {
+//            conference.setOccupantStorageProvider(occupantStorageProvider);
+//        }
+        serverRuntimeContext.getResourceRegistry().addBindListener(conference.getRoomStorageProvider());
 
-        if (roomStorageProvider == null) {
-            logger.warn("No room storage provider found, using the default (in memory)");
-        } else {
-            conference.setRoomStorageProvider(roomStorageProvider);
-        }
-        serverRuntimeContext.getResourceRegistry().addBindListener(roomStorageProvider);
-
-        if (occupantStorageProvider == null) {
-            logger.warn("No occupant storage provider found, using the default (in memory)");
-        } else {
-            conference.setOccupantStorageProvider(occupantStorageProvider);
-        }
-        conference.initialize(this);
+//        if (occupantStorageProvider == null) {
+//            logger.warn("No occupant storage provider found, using the default (in memory)");
+//        } else {
+//            conference.setOccupantStorageProvider(occupantStorageProvider);
+//        }
+//        conference.initialize(this);
         serverRuntimeContext.registerComponent(this);
     }
 
@@ -148,7 +198,7 @@ public class MUCModule extends DefaultDiscoAwareModule implements Component, Com
 
     @Override
     public String getVersion() {
-        return "1.24";
+        return "1.33.0";
     }
 
     /**
@@ -168,7 +218,7 @@ public class MUCModule extends DefaultDiscoAwareModule implements Component, Com
             return serverInfos;
         } else {
             // might be an items request on a room
-            Room room = conference.findRoom(request.getTo().getBareJID());
+            Room room = conference.findRoom(request.getTo().getNode());
             if (room == null)
                 return null;
 
@@ -214,7 +264,7 @@ public class MUCModule extends DefaultDiscoAwareModule implements Component, Com
             return null;
         } else if (fullDomain.getDomain().equals(to.getDomain())) {
             // might be an items request on a room
-            Room room = conference.findRoom(to.getBareJID());
+            Room room = conference.findRoom(to.getNode());
             if (room != null) {
                 if (to.getResource() != null) {
                     // request for an occupant
@@ -303,7 +353,7 @@ public class MUCModule extends DefaultDiscoAwareModule implements Component, Com
 				throws ProtocolException {
 			if(!isOutboundStanza) {
 				Entity to=stanza.getTo();
-				Room room=conference.findRoom(to.getBareJID());
+				Room room=conference.findRoom(to.getNode());
 				if(room!=null) {
 					Occupant occupant=room.findOccupantByNick(to.getResource());
 					if(occupant!=null) {

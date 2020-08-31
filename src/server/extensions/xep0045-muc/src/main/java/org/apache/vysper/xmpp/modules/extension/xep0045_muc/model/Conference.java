@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import org.apache.vysper.xmpp.addressing.Entity;
+import org.apache.vysper.storage.StorageProviderRegistry;
 import org.apache.vysper.xmpp.modules.extension.xep0045_muc.MUCModule;
 import org.apache.vysper.xmpp.modules.extension.xep0045_muc.storage.InMemoryOccupantStorageProvider;
 import org.apache.vysper.xmpp.modules.extension.xep0045_muc.storage.InMemoryRoomStorageProvider;
@@ -59,44 +59,50 @@ public class Conference implements ServerInfoRequestListener, ItemRequestListene
         this.name = name;
     }
 
-    public void initialize(MUCModule module) {
+    public void initialize(MUCModule module,StorageProviderRegistry registry) {
     	this.module=module;
-        roomStorageProvider.initialize();
-        if (occupantStorageProvider != null)
-            occupantStorageProvider.initialize();
+    	this.roomStorageProvider=(RoomStorageProvider)registry.retrieve(RoomStorageProvider.class);
+    	if(roomStorageProvider==null) {
+    		roomStorageProvider=new InMemoryRoomStorageProvider();
+    	}
+    	occupantStorageProvider=(OccupantStorageProvider)registry.retrieve(OccupantStorageProvider.class);
+    	if(occupantStorageProvider==null) {
+    		occupantStorageProvider=new InMemoryOccupantStorageProvider();
+    	}
     }
+    
+    
 
     public Collection<Room> getAllRooms() {
     	List<Room> rooms=new ArrayList<Room>();
     	for(Room room:roomStorageProvider.getAllRooms()) {
-    		if(room.getJID().getDomain().equals(module.getComponentContext().getServerEnitity().getDomain())) {
+    		if(room.getModule()==module) {
     			rooms.add(room);
     		}
     	}
         return rooms;
     }
 
-    public Room createRoom(Entity jid, String name, RoomType... types) {
-        if (roomStorageProvider.roomExists(jid)) {
-            throw new IllegalArgumentException("Room already exists with JID: " + jid);
+    public Room createRoom(String nodeName, String name, RoomType... types) {
+        if (roomStorageProvider.roomExists(module,nodeName)) {
+            throw new IllegalArgumentException("Room already exists with name: " + nodeName);
         }
 
-        return roomStorageProvider.createRoom(module,jid, name, types);
+        return roomStorageProvider.createRoom(module,nodeName, name, types);
     }
 
-    public void deleteRoom(Entity jid) {
-        roomStorageProvider.deleteRoom(jid);
-
+    public void deleteRoom(Room room) {
+    	roomStorageProvider.deleteRoom(room);
     }
 
-    public Room findRoom(Entity jid) {
-        return roomStorageProvider.findRoom(jid);
+    public Room findRoom(String nodeName) {
+        return roomStorageProvider.findRoom(module,nodeName);
     }
 
-    public Room findOrCreateRoom(Entity jid, String name, RoomType... types) {
-        Room room = findRoom(jid);
+    public Room findOrCreateRoom(String nodeName, String name, RoomType... types) {
+        Room room = findRoom(nodeName);
         if (room == null) {
-            room = createRoom(jid, name, types);
+            room = createRoom(nodeName, name, types);
         }
         return room;
     }
@@ -135,7 +141,7 @@ public class Conference implements ServerInfoRequestListener, ItemRequestListene
         Collection<Room> rooms = getAllRooms();
 
         for (Room room : rooms) {
-            items.add(new Item(room.getJID(), room.getName()));
+            items.add(new Item(module.getRoomJid(room), room.getName()));
         }
 
         return items;

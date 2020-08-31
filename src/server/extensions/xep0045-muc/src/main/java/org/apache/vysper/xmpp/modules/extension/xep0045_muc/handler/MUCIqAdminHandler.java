@@ -95,7 +95,7 @@ public class MUCIqAdminHandler extends DefaultIQHandler {
     protected Stanza handleSet(IQStanza stanza, ServerRuntimeContext serverRuntimeContext, SessionContext sessionContext) {
         logger.debug("Received MUC admin stanza");
         
-        Room room = conference.findRoom(stanza.getTo());
+        Room room = conference.findRoom(stanza.getTo().getNode());
         Occupant moderator = room.findOccupantByJID(getFrom(sessionContext,stanza));
 
         // check if moderator
@@ -168,7 +168,7 @@ public class MUCIqAdminHandler extends DefaultIQHandler {
             }
         }
         
-        Affiliation currentAffiliation = room.getAffiliations().getAffiliation(target);
+        Affiliation currentAffiliation = room.getAffiliation(target);
         Affiliation newAffiliation = item.getAffiliation();
 
         // if the target is present in the room, we need to send presence updates
@@ -231,7 +231,9 @@ public class MUCIqAdminHandler extends DefaultIQHandler {
         		targetOccupant.setRole(newRole);
         	}
         }
-        room.getAffiliations().add(target, newAffiliation);
+        if(targetOccupant!=null) {
+        	targetOccupant.setAffiliation(newAffiliation);
+        }
             
 
         if(targetOccupant != null) {
@@ -242,7 +244,7 @@ public class MUCIqAdminHandler extends DefaultIQHandler {
                 relayStanza(occupant.getJid(), presenceToRemaining, sessionContext);
             }
         } else {
-            room.getAffiliations().add(target, newAffiliation);
+            targetOccupant.setAffiliation(newAffiliation);
             
             MucUserItem presenceItem = new MucUserItem(target, null, newAffiliation, Role.None);
             for (Occupant occupant : room.getOccupants()) {

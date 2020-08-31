@@ -39,46 +39,46 @@ import org.apache.vysper.xmpp.state.resourcebinding.SessionBindListener;
  */
 public class InMemoryRoomStorageProvider implements RoomStorageProvider, SessionBindListener {
 
-    private Map<Entity, Room> rooms = new ConcurrentHashMap<Entity, Room>();
+    private Map<RoomKey, Room> rooms = new ConcurrentHashMap<RoomKey, Room>();
 
     public void initialize() {
         // do nothing
     }
 
-    public Room createRoom(MUCModule module,Entity jid, String name, RoomType... roomTypes) {
-        Room room = createInternal(module,jid, name, roomTypes);
-        rooms.put(jid, room);
+    public Room createRoom(MUCModule module,String nodeName, String name, RoomType... roomTypes) {
+        Room room = createInternal(module,nodeName, name, roomTypes);
+        rooms.put(room, room);
         return room;
     }
     
-    protected Room createInternal(MUCModule module,Entity jid, String name, RoomType... roomTypes) {
-        return new Room(module,jid, name, roomTypes);
+    protected Room createInternal(MUCModule module,String nodeName, String name, RoomType... roomTypes) {
+        return new Room(module,nodeName, name, roomTypes);
     }
 
     public Collection<Room> getAllRooms() {
         return Collections.unmodifiableCollection(rooms.values());
     }
 
-    public Room findRoom(Entity jid) {
-        return rooms.get(jid);
+    public Room findRoom(MUCModule module,String roomName) {
+        return rooms.get(new RoomKey(module,roomName));
     }
 
-    public boolean roomExists(Entity jid) {
-        return rooms.containsKey(jid);
+    public boolean roomExists(MUCModule module,String roomName) {
+        return rooms.containsKey(new RoomKey(module, roomName));
     }
 
-    public void deleteRoom(Entity jid) {
-        rooms.remove(jid);
+    public void deleteRoom(Room room) {
+        rooms.remove(room);
     }
 
 	@Override
 	public void onSessionUnbound(String resource, SessionContext sessionContext) {
 		if(rooms.size()>0) {
 			Entity fullJid=new EntityImpl(sessionContext.getInitiatingEntity(), resource);
-			for(Map.Entry<Entity,Room> entry:rooms.entrySet()) {
+			for(Map.Entry<RoomKey,Room> entry:rooms.entrySet()) {
 				Occupant occupant=entry.getValue().findOccupantByJID(fullJid);
 				if(occupant!=null) {
-					System.out.println("Remove occupant from room");
+					occupant.leaveAsync("unbound");
 				}
 			}
 		}

@@ -46,7 +46,7 @@ public class MUCIqSetHandler implements StanzaHandler {
 		if(isOutboundStanza) {
 			Entity to=stanza.getTo();
 			if(to.isNodeSet()&&to.isResourceSet()) {
-				Room room=conference.findRoom(to.getBareJID());
+				Room room=conference.findRoom(to.getNode());
 				if(room!=null) {
 					Occupant occupant=room.findOccupantByNick(to.getResource());
 					if(occupant!=null) try {

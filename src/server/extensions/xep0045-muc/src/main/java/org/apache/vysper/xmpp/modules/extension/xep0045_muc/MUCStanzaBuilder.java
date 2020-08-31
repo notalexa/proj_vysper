@@ -28,8 +28,6 @@ import org.apache.vysper.xml.fragment.XMLElement;
 import org.apache.vysper.xml.fragment.XMLFragment;
 import org.apache.vysper.xmpp.addressing.Entity;
 import org.apache.vysper.xmpp.modules.extension.xep0045_muc.model.Occupant;
-import org.apache.vysper.xmpp.modules.extension.xep0045_muc.stanzas.Status;
-import org.apache.vysper.xmpp.modules.extension.xep0045_muc.stanzas.Status.StatusCode;
 import org.apache.vysper.xmpp.modules.extension.xep0045_muc.stanzas.X;
 import org.apache.vysper.xmpp.stanza.PresenceStanzaType;
 import org.apache.vysper.xmpp.stanza.Stanza;
@@ -49,11 +47,6 @@ public class MUCStanzaBuilder extends StanzaBuilder {
 
     public static Stanza createPresenceStanza(Occupant fromOccupant,Entity from, Entity to, PresenceStanzaType type, String xNamespaceUri,
             XMLElement... innerElms) {
-    	if(fromOccupant!=null&&to.equals(fromOccupant.getJid())) {
-    		List<XMLElement> inner=new ArrayList<>(Arrays.asList(innerElms));
-    		inner.add(new Status(StatusCode.OWN_PRESENCE));
-    		innerElms=inner.toArray(new XMLElement[inner.size()]);
-    	}
         StanzaBuilder builder = StanzaBuilder.createPresenceStanza(from, to, null, type, null, null);
         if(fromOccupant!=null) {
         	fromOccupant.buildStanza(builder);

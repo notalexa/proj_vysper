@@ -20,9 +20,8 @@
 package org.apache.vysper.xmpp.modules.extension.xep0045_muc.model;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -32,11 +31,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.vysper.xml.fragment.XMLElement;
 import org.apache.vysper.xmpp.addressing.Entity;
 import org.apache.vysper.xmpp.addressing.EntityImpl;
+import org.apache.vysper.xmpp.modules.extension.xep0045_muc.MUCError;
 import org.apache.vysper.xmpp.modules.extension.xep0045_muc.MUCModule;
 import org.apache.vysper.xmpp.modules.extension.xep0045_muc.MUCStanzaBuilder;
 import org.apache.vysper.xmpp.modules.extension.xep0045_muc.stanzas.MucUserItem;
 import org.apache.vysper.xmpp.modules.extension.xep0045_muc.stanzas.Status;
 import org.apache.vysper.xmpp.modules.extension.xep0045_muc.stanzas.Status.StatusCode;
+import org.apache.vysper.xmpp.modules.extension.xep0045_muc.storage.RoomStorageProvider.RoomKey;
 import org.apache.vysper.xmpp.modules.servicediscovery.management.Feature;
 import org.apache.vysper.xmpp.modules.servicediscovery.management.Identity;
 import org.apache.vysper.xmpp.modules.servicediscovery.management.InfoDataForm;
@@ -59,95 +60,138 @@ import org.apache.vysper.xmpp.stanza.dataforms.Field.Type;
  *
  * @author The Apache MINA Project (dev@mina.apache.org)
  */
-public class Room implements InfoRequestListener, ItemRequestListener {
-	private MUCModule module;
-
-    private EnumSet<RoomType> roomTypes;
-
-    private Entity jid;
+public class Room extends RoomKey implements InfoRequestListener, ItemRequestListener {
+	
+	private RoomSettings settings;
 
     private String name;
 
     private String password;
     
-    private boolean rewriteDuplicateNick = true;
+    private Map<Entity,Member> members=new HashMap<Entity, Member>();
+    
+    /**
+     * Reflects <code>muc#roomconfig_presencebroadcast</code>.
+     */
+    private Set<Affiliation> presenceBroadcastSet;
+    
+    /**
+     * Reflects <code>muc#roomconfig_maxusers</code>.
+     */
+    private int maxUsers=Integer.MAX_VALUE;
+    
+    private boolean locked=false;
+    
+    private String subject;
+    
+    //private boolean rewriteDuplicateNick = true;
 
     private DiscussionHistory history = new DiscussionHistory();
 
-    private Affiliations affiliations = new Affiliations();
+    //private Affiliations affiliations = new Affiliations();
 
     // keep in a map to allow for quick access
     private Map<Entity, Occupant> occupants = new ConcurrentHashMap<Entity, Occupant>();
 
-    public Room(MUCModule module,Entity jid, String name, RoomType... types) {
-        if (jid == null) {
+    public Room(MUCModule module,String nodeName, String name, RoomType... types) {
+    	super(module,nodeName);
+        if (nodeName == null) {
             throw new IllegalArgumentException("JID can not be null");
-        } else if (jid.getResource() != null) {
-            throw new IllegalArgumentException("JID must be bare");
         }
         if (name == null || name.trim().length() == 0) {
             throw new IllegalArgumentException("Name can not be null or empty");
         }
-        this.module=module;
-        this.jid = jid;
         this.name = name;
-
-        EnumSet<RoomType> potentialTypes;
-        if (types != null && types.length > 0) {
-            potentialTypes = EnumSet.copyOf(Arrays.asList(types));
-
-            // make sure the list does not contain antonyms
-            RoomType.validateAntonyms(potentialTypes);
-        } else {
-            potentialTypes = EnumSet.noneOf(RoomType.class);
-        }
-
-        // complement with default types
-        this.roomTypes = RoomType.complement(potentialTypes);
+        this.settings=new RoomSettings(types);
     }
 
     public Entity getJID() {
-        return jid;
+        return module.getRoomJid(this);
     }
 
+    public String getNodeName() {
+    	return nodeName;
+    }
     public String getName() {
         return name;
     }
+    
+	/**
+	 * Should we broadcast presence to the target. This is configured via <code>muc#roomconfig_presencebroadcast</code> (and stored in {@link #presenceBroadcastSet}).
+	 * The method also returns <code>true</code> if the target is this occupant (sending presence to himself in any room).
+	 * 
+	 * @param target the occupant the presence stanza should be send
+	 * @return <code>true</code> if a presence stanza should be send
+	 */
+	protected boolean doBroadcastPresenceTo(Occupant target) {
+		return presenceBroadcastSet==null||presenceBroadcastSet.contains(target.getAffiliation());
+	}
 
-    public EnumSet<RoomType> getRoomTypes() {
-        return roomTypes.clone();
-    }
 
     public boolean isRoomType(RoomType type) {
-        return roomTypes.contains(type);
+        return settings.contains(type);
+    }
+    
+    public Room addMember(Member member) {
+    	members.put(member.getJid(),member);
+    	return this;
+    }
+    
+    public Member getMember(Entity jid) {
+    	return members.get(jid);
+    }
+    
+    /**
+     * XEP-0045 (7.2.12 Room Logging)
+     * 
+     * @return <code>true</code> if this room has a public archive.
+     */
+    public boolean hasPublicArchive() {
+    	return false;
+    }
+//
+//    public boolean rewritesDuplicateNick() {
+//        return rewriteDuplicateNick;
+//    }
+//
+//    public void setRewriteDuplicateNick(boolean rewriteDuplicateNick) {
+//        this.rewriteDuplicateNick = rewriteDuplicateNick;
+//    }
+    
+    public Affiliation getAffiliation(Entity jid) {
+    	Occupant occupant=occupants.get(jid);
+    	if(occupant!=null) {
+    		return occupant.getAffiliation();
+    	}
+    	Member member=members.get(jid);
+    	return member==null?Affiliation.None:member.getAffiliation();
     }
 
-    public boolean rewritesDuplicateNick() {
-        return rewriteDuplicateNick;
-    }
-
-    public void setRewriteDuplicateNick(boolean rewriteDuplicateNick) {
-        this.rewriteDuplicateNick = rewriteDuplicateNick;
-    }
-
-    public Occupant addOccupant(Entity occupantJid, String name) {
-        Affiliation affiliation = affiliations.getAffiliation(occupantJid);
-
-        // TODO throw a domain specific exception
-        if (affiliation == Affiliation.Outcast) {
-            throw new RuntimeException("forbidden");
-        }
-
-        // default to none
-        if (affiliation == null) {
-            affiliation = Affiliation.None;
-        }
+    public Occupant addOccupant(Entity occupantJid, String name) throws MUCError {
+    	if(occupants.size()>=maxUsers) {
+    		// 7.2.9
+    		throw new MUCError(MUCError::serviceUnavailable);
+    	}
+    	if(locked) {
+    		// 7.2.10
+    		throw new MUCError(MUCError::itemNotFound);
+    	}
+    	Member member=members.get(occupantJid.getBareJID());
+    	if(member!=null&&member.getNick()!=null) {
+    		name=member.getNick();
+    	}
+    	Affiliation affiliation = member!=null?member.getAffiliation():Affiliation.None;
         
-        Role role = Role.getRole(affiliation, roomTypes);
-        Occupant occupant = new Occupant(occupantJid, name, this, role);
+        if (affiliation == Affiliation.Outcast) {
+        	// 7.2.7
+        	throw new MUCError(MUCError::forbidden);
+        }
+
+        Role role = Role.getRole(affiliation, settings);
+        Occupant occupant = new Occupant(occupantJid, name, this, affiliation, role);
         if (isRoomType(RoomType.MembersOnly) && affiliation == Affiliation.None) {
-            // don't add non member to room
-            throw new RuntimeException("registration-required");
+        	// 7.2.6
+        	throw new MUCError(MUCError::registrationRequired);
         } else {
             occupants.put(occupantJid, occupant);
         }
@@ -214,7 +258,7 @@ public class Room implements InfoRequestListener, ItemRequestListener {
         infoElements.add(new Identity("conference", "text", getName()));
         infoElements.add(new Feature(NamespaceURIs.XEP0045_MUC));
 
-        for (RoomType type : roomTypes) {
+        for (RoomType type : settings.getTypes()) {
             if (type.includeInDisco()) {
                 infoElements.add(new Feature(type.getDiscoName()));
             }
@@ -237,7 +281,7 @@ public class Room implements InfoRequestListener, ItemRequestListener {
             // private room, return empty list
         } else {
             for (Occupant occupant : getOccupants()) {
-                items.add(new Item(new EntityImpl(getJID(), occupant.getNick())));
+                items.add(new Item(new EntityImpl(module.getRoomJid(this), occupant.getNick())));
             }
         }
         return items;
@@ -255,9 +299,9 @@ public class Room implements InfoRequestListener, ItemRequestListener {
         return history;
     }
 
-    public Affiliations getAffiliations() {
-        return affiliations;
-    }
+//    public Affiliations getAffiliations() {
+//        return affiliations;
+//    }
     
     protected void notifyOccupantAdded(Occupant occupant) {	
     }
@@ -271,13 +315,13 @@ public class Room implements InfoRequestListener, ItemRequestListener {
         }
 
         if (isRoomType(RoomType.Temporary) && isEmpty()) {
-            module.getConference().deleteRoom(getJID());
+            module.getConference().deleteRoom(this);
         }
     }
     
     private void sendExitRoomPresenceToExisting(Occupant exitingOccupant, Occupant existingOccupant, Room room,
             String statusMessage, ServerRuntimeContext serverRuntimeContext) {
-        Entity roomAndNewUserNick = new EntityImpl(room.getJID(), exitingOccupant.getNick());
+        Entity roomAndNewUserNick = new EntityImpl(module.getRoomJid(this), exitingOccupant.getNick());
 
         List<XMLElement> inner = new ArrayList<XMLElement>();
         inner.add(new MucUserItem(null, null, existingOccupant.getAffiliation(), Role.None));
@@ -301,4 +345,12 @@ public class Room implements InfoRequestListener, ItemRequestListener {
                 existingOccupant.getJid(), PresenceStanzaType.UNAVAILABLE, NamespaceURIs.XEP0045_MUC_USER, inner);
         serverRuntimeContext.relay(presenceToExisting);
     }
+
+	public MUCModule getModule() {
+		return module;
+	}
+
+	public String getSubject() {
+		return subject;
+	}
 }
