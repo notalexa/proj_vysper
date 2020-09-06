@@ -44,18 +44,23 @@ import org.apache.vysper.xmpp.protocol.NamespaceURIs;
  * @author The Apache MINA Project (dev@mina.apache.org)
  */
 public class Conference implements ServerInfoRequestListener, ItemRequestListener {
+	public static final String DEFAULT_NAME="Conference";
 	private MUCModule module;
     private String name;
+    private String conferenceServer;
 
     private RoomStorageProvider roomStorageProvider = new InMemoryRoomStorageProvider();
 
     private OccupantStorageProvider occupantStorageProvider = new InMemoryOccupantStorageProvider();
 
     public Conference(String name) {
+    	this(name,null);
+    }
+    public Conference(String name,String conferenceServer) {
         if (name == null || name.trim().length() == 0) {
             throw new IllegalArgumentException("Name must not be null or empty");
         }
-
+        this.conferenceServer=conferenceServer;
         this.name = name;
     }
 
@@ -146,5 +151,9 @@ public class Conference implements ServerInfoRequestListener, ItemRequestListene
 
         return items;
     }
+
+	public String resolveConferenceURL(String nodeName) {
+		return conferenceServer==null?null:(conferenceServer+"/"+nodeName);
+	}
 
 }

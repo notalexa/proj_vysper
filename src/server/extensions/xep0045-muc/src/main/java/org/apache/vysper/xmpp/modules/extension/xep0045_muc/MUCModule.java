@@ -89,7 +89,7 @@ public final class MUCModule extends DefaultDiscoAwareModule implements Componen
     private ComponentStanzaProcessor stanzaProcessor;
 
     public MUCModule(StorageProviderRegistry registry,String subdomain) {
-        this(registry,subdomain, new Conference("Conference"));
+        this(registry,subdomain, new Conference(Conference.DEFAULT_NAME));
     }
 
     public MUCModule(StorageProviderRegistry registry) {

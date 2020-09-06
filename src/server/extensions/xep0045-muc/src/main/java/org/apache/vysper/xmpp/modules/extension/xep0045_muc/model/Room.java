@@ -80,6 +80,12 @@ public class Room extends RoomKey implements InfoRequestListener, ItemRequestLis
      */
     private int maxUsers=Integer.MAX_VALUE;
     
+    /**
+     * Reflects <code>muc#roomconfig_videoroom</code> (new, reflects a URL to the video conference associated to this room)
+     */
+    private String videoRoom=null;
+    
+    
     private boolean locked=false;
     
     private String subject;
@@ -103,6 +109,7 @@ public class Room extends RoomKey implements InfoRequestListener, ItemRequestLis
         }
         this.name = name;
         this.settings=new RoomSettings(types);
+        this.videoRoom=module.getConference().resolveConferenceURL(nodeName);
     }
 
     public Entity getJID() {
@@ -268,6 +275,9 @@ public class Room extends RoomKey implements InfoRequestListener, ItemRequestLis
         dataForm.addField(new Field(null, Type.HIDDEN, "FORM_TYPE").addValue("http://jabber.org/protocol/muc#roominfo"));
         dataForm.addField(new Field(null, Type.TEXT_SINGLE, "muc#roominfo_description").addValue(name==null?"":name));
         dataForm.addField(new Field(null, Type.TEXT_SINGLE, "muc#roominfo_occupants").addValue(Integer.toString(occupants.size())));
+        if(videoRoom!=null&&videoRoom.length()>0) {
+        	dataForm.addField(new Field(null, Type.TEXT_SINGLE, "muc#roomconfig_videoroom").addValue(videoRoom));
+        }
         infoElements.add(new InfoDataForm(dataForm));
         return infoElements;
     }
